@@ -154,11 +154,11 @@ class AmazonBooksDataset(Dataset):
 
 def create_dataset(dataset='criteo', read_part=True, sample_num=100000, task='classification', sequence_length=40, device=torch.device('cpu')):
     if dataset == 'criteo':
-        return CriteoDataset('../dataset/criteo-100k.txt', read_part=read_part, sample_num=sample_num).to(device)
+        return CriteoDataset('./dataset/criteo-100k.txt', read_part=read_part, sample_num=sample_num).to(device)
     elif dataset == 'movielens':
-        return MovieLensDataset('../dataset/ml-latest-small-ratings.txt', read_part=read_part, sample_num=sample_num, task=task).to(device)
+        return MovieLensDataset('./dataset/ml-latest-small-ratings.txt', read_part=read_part, sample_num=sample_num, task=task).to(device)
     elif dataset == 'amazon-books':
-        return AmazonBooksDataset('../dataset/amazon-books-100k.txt', read_part=read_part, sample_num=sample_num, sequence_length=sequence_length).to(device)
+        return AmazonBooksDataset('./dataset/amazon-books-100k.txt', read_part=read_part, sample_num=sample_num, sequence_length=sequence_length).to(device)
     else:
         raise Exception('No such dataset!')
 
