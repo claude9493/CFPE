@@ -236,8 +236,8 @@ class Trainer:
 
         train_loss_list = []
         valid_loss_list = []
-
-        for e in tqdm(range(epoch)):
+        pbar = tqdm(range(epoch))
+        for e in pbar:
             # train part
             self.model.train()
             train_loss_ = 0
@@ -258,6 +258,10 @@ class Trainer:
                 valid_loss_list.append(valid_loss)
                 if not early_stopper.is_continuable(valid_metric):
                     break
+                pbar.set_description("Train loss: {:.3f} | Validation loss {:.3f}".format(train_loss_list[-1], valid_loss))
+            else:
+                pbar.set_description("Train loss: {:.3f}".format(train_loss_list[-1]))
+
 
         if trials:
             self.model.load_state_dict(early_stopper.best_state)
