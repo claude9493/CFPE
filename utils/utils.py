@@ -10,6 +10,8 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 
 import torch
+# from torch.optimizer import MultiplicativeLR
+from torch.optim.lr_scheduler import MultiplicativeLR
 
 
 class Dataset:
@@ -216,13 +218,17 @@ class BatchLoader:
 
 class Trainer:
 
-    def __init__(self, model, optimizer, criterion, batch_size=None, task='classification'):
+    def __init__(self, model, optimizer, criterion, batch_size=None, task='classification', scheduler=None):
         assert task in ['classification', 'regression']
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
         self.batch_size = batch_size
         self.task = task
+        if scheduler:
+          self.scheduler = scheduler
+        else:
+          self.scheduler = MultiplicativeLR(self.optimizer, lr_lambda = lambda e: 1)
 
     def train(self, train_X, train_y, epoch=100, trials=None, valid_X=None, valid_y=None):
         if self.batch_size:
@@ -261,6 +267,8 @@ class Trainer:
                 pbar.set_description("Train loss: {:.3f} | Validation loss {:.3f}".format(train_loss_list[-1], valid_loss))
             else:
                 pbar.set_description("Train loss: {:.3f}".format(train_loss_list[-1]))
+            
+            self.scheduler.step()
 
 
         if trials:
