@@ -1,5 +1,6 @@
 from copy import deepcopy
-from tqdm import tqdm
+# from tqdm import tqdm
+from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
 import numpy as np
