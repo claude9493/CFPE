@@ -218,7 +218,7 @@ class BatchLoader:
 
 class Trainer:
 
-    def __init__(self, model, optimizer, criterion, batch_size=None, task='classification', scheduler=None):
+    def __init__(self, model, optimizer, criterion, batch_size=None, task='classification', scheduler=None, draw=True):
         assert task in ['classification', 'regression']
         self.model = model
         self.optimizer = optimizer
@@ -229,12 +229,12 @@ class Trainer:
           self.scheduler = scheduler
         else:
           self.scheduler = MultiplicativeLR(self.optimizer, lr_lambda = lambda e: 1)
+        self.draw = draw
 
     def train(self, train_X, train_y, epoch=100, trials=None, valid_X=None, valid_y=None):
         if self.batch_size:
             train_loader = BatchLoader(train_X, train_y, self.batch_size)
         else:
-            # 为了在 for b_x, b_y in train_loader 的时候统一
             train_loader = [[train_X, train_y]]
 
         if trials:
@@ -275,14 +275,16 @@ class Trainer:
             self.model.load_state_dict(early_stopper.best_state)
             plt.plot(valid_loss_list, label='valid_loss')
 
-        plt.plot(train_loss_list, label='train_loss')
-        plt.legend()
-        plt.show()
+        if self.draw:
+          plt.plot(train_loss_list, label='train_loss')
+          plt.legend()
+          plt.show()
 
         print('train_loss: {:.5f} | train_metric: {:.5f}'.format(*self.test(train_X, train_y)))
 
         if trials:
             print('valid_loss: {:.5f} | valid_metric: {:.5f}'.format(*self.test(valid_X, valid_y)))
+        return min(train_loss_list), min(valid_loss_list)
 
     def test(self, test_X, test_y):
         self.model.eval()

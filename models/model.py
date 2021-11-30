@@ -94,9 +94,20 @@ class Regularizer():
 
 class BetaRecommendation(nn.Module):
 
-    def __init__(self, field_dims, embed_dim=4, **kwargs):
+    SUPPORTED_DISTANCE = ['JS', 'KL']
+
+    def __init__(self, field_dims, embed_dim=4, dist_metric='JS', **kwargs):
         super(BetaRecommendation, self).__init__()
         n_users, n_movies = field_dims[0], field_dims[1]
+
+        if dist_metric not in BetaRecommendation.SUPPORTED_DISTANCE:
+          raise ValueError("Only {} distance metrics are supported now.".format(BetaRecommendation.SUPPORTED_DISTANCE))
+        self.dist_metric = dist_metric
+
+        self.dist_func = {
+            'JS': self.JS_divergence,
+            'KL': self.KL_divergence
+        }[self.dist_metric]        
 
         self.gamma = nn.Parameter(
             torch.Tensor([kwargs.get('gamma', 12)]), 
@@ -135,7 +146,10 @@ class BetaRecommendation(nn.Module):
         u_dist = torch.distributions.beta.Beta(alpha_u, beta_u)
         m_dist = torch.distributions.beta.Beta(alpha_m, beta_m)
 
-        distance = self.KL_distance(u_dist, m_dist)
+        distance = self.dist_func(u_dist, m_dist)
+
+        # distance = self.KL_divergence(u_dist, m_dist)
+        # distance = self.JS_divergence(u_dist, m_dist)
         # distance = self.Wasserstein_distance(u_dist, m_dist)
     
         output = Bu + Bm - distance
@@ -143,16 +157,16 @@ class BetaRecommendation(nn.Module):
         self.loss[0] = torch.norm(Bu) + torch.norm(Bm)
         return output
       
-    def KL_distance(self, u_dist, m_dist):
+    def KL_divergence(self, u_dist, m_dist):
       # return torch.norm(torch.distributions.kl.kl_divergence(u_dist, m_dist), p=1, dim=-1)
-      
-      # print([u_dist, m_dist, 
-            #  torch.norm(torch.nan_to_num(torch.log(torch.distributions.kl.kl_divergence(u_dist, m_dist)), 
-                                        #  nan=1.0, posinf=1.0), p=1, dim=-1)])
-
-      # return -torch.nan_to_num(self.gamma - torch.norm(torch.nan_to_num(torch.distributions.kl.kl_divergence(u_dist, m_dist).squeeze(), 
-      #                                                                  nan=1, posinf=1), p=1, dim=-1))
       return torch.norm(2.0/torch.pi * torch.atan(torch.distributions.kl.kl_divergence(u_dist, m_dist).squeeze()), p=1, dim=-1)
+    
+    def JS_divergence(self, u_dist, m_dist):
+      mean_dist = torch.distributions.beta.Beta(0.5 * (u_dist.concentration0 + m_dist.concentration0), 0.5 * (u_dist.concentration1 + m_dist.concentration1))  
+      # 0.5 * (u_dist + m_dist)
+      kl_1 = torch.distributions.kl.kl_divergence(u_dist, mean_dist).squeeze()
+      kl_2 = torch.distributions.kl.kl_divergence(m_dist, mean_dist).squeeze()
+      return torch.norm(2.0/torch.pi * torch.atan((kl_1 + kl_2) * 0.5), p=1, dim=-1)
 
     def Wasserstein_distance(self, u_dist, m_dist):
       # Generate reference points
