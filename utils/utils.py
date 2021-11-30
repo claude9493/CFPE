@@ -3,6 +3,7 @@ from copy import deepcopy
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
+from loguru import logger
 import numpy as np
 import pandas as pd
 
@@ -219,7 +220,7 @@ class BatchLoader:
 
 class Trainer:
 
-    def __init__(self, model, optimizer, criterion, batch_size=None, task='classification', scheduler=None, draw=True):
+    def __init__(self, model, optimizer, criterion, batch_size=None, task='classification', scheduler=None, draw=False):
         assert task in ['classification', 'regression']
         self.model = model
         self.optimizer = optimizer
@@ -232,7 +233,7 @@ class Trainer:
           self.scheduler = MultiplicativeLR(self.optimizer, lr_lambda = lambda e: 1)
         self.draw = draw
 
-    def train(self, train_X, train_y, epoch=100, trials=None, valid_X=None, valid_y=None):
+    def train(self, train_X, train_y, epoch=100, trials=None, valid_X=None, valid_y=None, log=False):
         if self.batch_size:
             train_loader = BatchLoader(train_X, train_y, self.batch_size)
         else:
@@ -243,7 +244,7 @@ class Trainer:
 
         train_loss_list = []
         valid_loss_list = []
-        pbar = tqdm(range(epoch))
+        pbar = tqdm(range(epoch), leave=False)
         for e in pbar:
             # train part
             self.model.train()
@@ -274,18 +275,25 @@ class Trainer:
 
         if trials:
             self.model.load_state_dict(early_stopper.best_state)
-            plt.plot(valid_loss_list, label='valid_loss')
+            if self.draw:
+              plt.plot(valid_loss_list, label='valid_loss')
 
         if self.draw:
           plt.plot(train_loss_list, label='train_loss')
           plt.legend()
           plt.show()
 
-        print('train_loss: {:.5f} | train_metric: {:.5f}'.format(*self.test(train_X, train_y)))
+        if log:
+          logger.success('train_loss: {:.5f} | train_metric: {:.5f}'.format(*self.test(train_X, train_y)))
+        else:
+          print('train_loss: {:.5f} | train_metric: {:.5f}'.format(*self.test(train_X, train_y)))
 
         if trials:
+          if log:
+            logger.success('valid_loss: {:.5f} | valid_metric: {:.5f}'.format(*self.test(valid_X, valid_y)))
+          else:
             print('valid_loss: {:.5f} | valid_metric: {:.5f}'.format(*self.test(valid_X, valid_y)))
-        return min(train_loss_list), min(valid_loss_list)
+        return min(train_loss_list), min(valid_loss_list), e
 
     def test(self, test_X, test_y):
         self.model.eval()

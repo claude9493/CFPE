@@ -9,7 +9,7 @@ class RMSELoss(nn.Module):
         self.mse = nn.MSELoss()
         
     def forward(self,yhat,y):
-        return torch.sqrt(self.mse(yhat,y))
+        return torch.sqrt(self.mse(yhat.view(-1,1),y))
 
 
 class MatrixFactorization(nn.Module):
@@ -35,7 +35,7 @@ class EE_Loss:
         self.model = model
 
     def __call__(self, pred, target):
-        loss = (1-self.reg_biase - self.reg_lambda) * nn.MSELoss()(pred, target)
+        loss = (1-self.reg_biase - self.reg_lambda) * nn.MSELoss()(pred.view(-1,1), target)
         loss += self.reg_biase * self.model.loss[0]
         loss += self.reg_lambda * self.model.loss[1]
         return torch.sqrt(loss)
@@ -129,7 +129,7 @@ class BetaRecommendation(nn.Module):
         self.regularizer = Regularizer(1, self.lb, self.ub)
         self.loss = [0,0]
 
-        self.sample_loss = SamplesLoss(loss="sinkhorn", scaling=1e-1000)
+        # self.sample_loss = SamplesLoss(loss="sinkhorn", scaling=1e-1000)
 
         
     def forward(self, x, global_mean=0):
@@ -168,9 +168,9 @@ class BetaRecommendation(nn.Module):
       kl_2 = torch.distributions.kl.kl_divergence(m_dist, mean_dist).squeeze()
       return torch.norm(2.0/torch.pi * torch.atan((kl_1 + kl_2) * 0.5), p=1, dim=-1)
 
-    def Wasserstein_distance(self, u_dist, m_dist):
-      # Generate reference points
-      x = torch.linspace(0.001, 0.999, 16).view(1, -1)
-      u_ref = torch.exp(u_dist.log_prob(x))
-      m_ref = torch.exp(m_dist.log_prob(x))
-      return self.sample_loss.forward(u_ref, m_ref)
+    # def Wasserstein_distance(self, u_dist, m_dist):
+    #   # Generate reference points
+    #   x = torch.linspace(0.001, 0.999, 16).view(1, -1)
+    #   u_ref = torch.exp(u_dist.log_prob(x))
+    #   m_ref = torch.exp(m_dist.log_prob(x))
+    #   return self.sample_loss.forward(u_ref, m_ref)
